@@ -32,7 +32,7 @@ class TweetManager:
 				tweetPQ = PyQuery(tweetHTML)
 				tweet = models.Tweet()
 				
-				usernameTweet = tweetPQ("span.username.js-action-profile-name b").text();
+				usernameTweet = tweetPQ("span.username.u-dir b").text();
 				txt = re.sub(r"\s+", " ", tweetPQ("p.js-tweet-text").text().replace('# ', '#').replace('@ ', '@'));
 				retweets = int(tweetPQ("span.ProfileTweet-action--retweet span.ProfileTweet-actionCount").attr("data-tweet-stat-count").replace(",", ""));
 				favorites = int(tweetPQ("span.ProfileTweet-action--favorite span.ProfileTweet-actionCount").attr("data-tweet-stat-count").replace(",", ""));
@@ -41,6 +41,16 @@ class TweetManager:
 				permalink = tweetPQ.attr("data-permalink-path");
 				user_id = int(tweetPQ("a.js-user-profile-link").attr("data-user-id"))
 				
+				emojisTxt = ''
+				emojis = tweetPQ("p.js-tweet-text img.Emoji");	
+				i = 0;
+				for emoji in emojis:
+					if (i > 0):
+						emojisTxt += ", ";
+					
+					emojisTxt += PyQuery(emoji).attr("title");
+					i += 1;
+
 				geo = ''
 				geoSpan = tweetPQ('span.Tweet-geo')
 				if len(geoSpan) > 0:
@@ -51,6 +61,7 @@ class TweetManager:
 						urls.append((link.attrib["data-expanded-url"]))
 					except KeyError:
 						pass
+
 				tweet.id = id
 				tweet.permalink = 'https://twitter.com' + permalink
 				tweet.username = usernameTweet
@@ -62,6 +73,8 @@ class TweetManager:
 				tweet.favorites = favorites
 				tweet.mentions = " ".join(re.compile('(@\\w*)').findall(tweet.text))
 				tweet.hashtags = " ".join(re.compile('(#\\w*)').findall(tweet.text))
+
+				tweet.emojis = emojisTxt
 				tweet.geo = geo
 				tweet.urls = ",".join(urls)
 				tweet.author_id = user_id
@@ -85,7 +98,7 @@ class TweetManager:
 	
 	@staticmethod
 	def getJsonReponse(tweetCriteria, refreshCursor, cookieJar, proxy):
-		url = "https://twitter.com/i/search/timeline?f=tweets&q=%s&src=typd&%smax_position=%s"
+		url = "https://twitter.com/i/search/timeline?f=tweets&q=%s&l=en&src=typd&%smax_position=%s"
 		
 		urlGetData = ''
 		if hasattr(tweetCriteria, 'username'):
@@ -118,9 +131,9 @@ class TweetManager:
 		]
 
 		if proxy:
-			opener = urllib2.build_opener(urllib2.ProxyHandler({'http': proxy, 'https': proxy}), urllib2.HTTPCookieProcessor(cookieJar))
+			opener = urllib.request.build_opener(urllib.request.ProxyHandler({'http': proxy, 'https': proxy}), urllib.request.HTTPCookieProcessor(cookieJar))
 		else:
-			opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookieJar))
+			opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookieJar))
 		opener.addheaders = headers
 
 		try:
@@ -135,4 +148,5 @@ class TweetManager:
 		
 		dataJson = json.loads(jsonResponse.decode())
 		
-		return dataJson		
+		return dataJson
+		
